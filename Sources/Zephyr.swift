@@ -12,7 +12,7 @@ import UIKit
 #endif
 
 /// Enumerates the Local (`UserDefaults`) and Remote (`NSUNSUbiquitousKeyValueStore`) data stores
-private enum ZephyrDataStore {
+public enum ZephyrDataStore {
     case local  // UserDefaults
     case remote // NSUbiquitousKeyValueStore
 }
@@ -118,6 +118,30 @@ public final class Zephyr: NSObject {
     public static func sync(keys: [String]) {
 
         switch shared.dataStoreWithLatestData() {
+        case .local:
+            printGeneralSyncStatus(finished: false, destination: .remote)
+            shared.zephyrQueue.sync {
+                shared.syncSpecificKeys(keys: keys, dataStore: .local)
+            }
+            printGeneralSyncStatus(finished: true, destination: .remote)
+        case .remote:
+            printGeneralSyncStatus(finished: false, destination: .local)
+            shared.zephyrQueue.sync {
+                shared.syncSpecificKeys(keys: keys, dataStore: .remote)
+            }
+            printGeneralSyncStatus(finished: true, destination: .local)
+        }
+    }
+    
+    /// A specialized version of sync that allows the source to be specified
+    ///
+    /// This method will synchronize an array of keys between `UserDefaults` and `NSUbiquitousKeyValueStore`.
+    ///
+    /// - Parameters:
+    ///     - keys: An array of keys that should be synchronized between `UserDefaults` and `NSUbiquitousKeyValueStore`.
+    ///     - source: The data source to read from when performing the sync
+    public static func syncFromSource(keys: [String], source: ZephyrDataStore) {
+        switch source {
         case .local:
             printGeneralSyncStatus(finished: false, destination: .remote)
             shared.zephyrQueue.sync {
